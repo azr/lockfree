@@ -16,7 +16,8 @@ type Header struct {
 //Node of a skip list
 type Node struct {
 	key         int
-	nexts       nodeSlice // slice of *Node
+	value       unsafe.Pointer //user stuff
+	nexts       nodeSlice      // slice of *Node
 	marked      bool
 	fullyLinked bool
 	lock        sync.Mutex
@@ -122,10 +123,10 @@ func (h *Header) findNode(v int, preds, succs nodeSlice) (lFound int) {
 	return
 }
 
-//Add v into list into at a random level
-//returns false if a node is already there
-//returns true if it was added or if it was already in there
-func (h *Header) Add(v int) bool {
+//Set adds ptr into list at v
+//returns false if it was just an edit
+//returns true if it was added
+func (h *Header) Set(v int, ptr unsafe.Pointer) bool {
 	topLayer := generateLevel(maxlevel)
 	preds, succs := newFullNodeSlice(), newFullNodeSlice()
 	for {
@@ -137,6 +138,7 @@ func (h *Header) Add(v int) bool {
 					//make sure everything is valid
 				}
 				//node already in there
+				atomic.StorePointer(&nodeFound.value, ptr)
 				return false
 			}
 			//something is deleting that node
@@ -161,7 +163,7 @@ func (h *Header) Add(v int) bool {
 			preds.unlock(highestLocked)
 			continue
 		}
-		newNode := newNode(v, topLayer)
+		newNode := newNode(ptr, v, topLayer)
 		for layer := 0; layer <= topLayer; layer++ {
 			newNode.nexts.set(layer, succs.get(layer))
 			preds.get(layer).nexts.set(layer, newNode)
@@ -235,10 +237,26 @@ func (h *Header) Contains(v int) bool {
 	return lFound != -1 && succs.get(lFound).fullyLinked && !succs.get(lFound).marked
 }
 
+//Get returns (ptr, true) if something was found, (nil, false) otherwise
+func (h *Header) Get(v int) (ptr unsafe.Pointer, found bool) {
+	preds, succs := newFullNodeSlice(), newFullNodeSlice()
+	lFound := h.findNode(v, preds, succs)
+
+	if lFound == -1 {
+		return nil, false
+	}
+	n := succs.get(lFound)
+	if !n.fullyLinked || n.marked {
+		return nil, false
+	}
+	return atomic.LoadPointer(&n.value), true
+}
+
 //newNode instanciates a *Node with topLayer set right
 // and a slice of `topLayer` sized nexts
-func newNode(v, topLayer int) *Node {
+func newNode(ptr unsafe.Pointer, v, topLayer int) *Node {
 	n := &Node{
+		value: ptr,
 		key:   v,
 		nexts: make([]unsafe.Pointer, topLayer+1),
 		// nexts: make([]*Node, topLayer+1),

@@ -5,16 +5,19 @@ import (
 
 	"sync"
 	"time"
+	"unsafe"
 )
 
 func TestList(t *testing.T) {
 	sl := New()
+	two := 2
+	three := "three"
 
 	if sl.Contains(2) {
 		t.Fatal("list contains something we never added")
 	}
 
-	if sl.Add(2) == false {
+	if sl.Set(2, unsafe.Pointer(&two)) == false {
 		t.Fatal("failed to add new item to list, someone deleting ??????")
 	}
 
@@ -24,6 +27,11 @@ func TestList(t *testing.T) {
 
 	if !sl.Contains(2) {
 		t.Fatal("list doesnt contain what we just added")
+	}
+	v, found := sl.Get(2)
+	s := *(*int)(v)
+	if found == false || s != two {
+		t.Fatalf("could not get wat we stored, found '%d' instead of '%d'", s, two)
 	}
 
 	if sl.Contains(3) {
@@ -38,8 +46,14 @@ func TestList(t *testing.T) {
 		t.Fatal("expected list to be of length 1")
 	}
 
-	if sl.Add(2) == true {
+	if sl.Set(2, unsafe.Pointer(&three)) == true {
 		t.Fatal("Add with already present value should have returned false")
+	}
+
+	v, found = sl.Get(2)
+	_three := *(*string)(v)
+	if found == false || _three != three {
+		t.Fatalf("could not get wat we stored, found '%d' instead of '%d'", s, two)
 	}
 
 	if sl.Remove(2) == false {
@@ -104,7 +118,7 @@ func TestParallel(t *testing.T) {
 
 func insert(t *testing.T, sl *Header, values int, check bool) {
 	for j := 0; j < values; j++ {
-		sl.Add(j)
+		sl.Set(j, unsafe.Pointer(nil))
 		if check {
 			checkList(t, sl)
 		}
