@@ -40,7 +40,7 @@ func (ns nodeSlice) set(layer int, n *Node) {
 }
 func (ns nodeSlice) unlock(highest int) {
 	var prev *Node
-	for i := 0; i <= highest; i++ {
+	for i := highest; i >= 0; i-- {
 		curr := ns.get(i)
 		if curr != prev {
 			curr.lock.Unlock()
