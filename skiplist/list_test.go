@@ -106,7 +106,6 @@ func insert(t *testing.T, sl *Header, values int, check bool) {
 	for j := 0; j < values; j++ {
 		sl.Add(j)
 		if check {
-			t.Log("inserted: ", j)
 			checkList(t, sl)
 		}
 	}
@@ -116,7 +115,6 @@ func remove(t *testing.T, sl *Header, values int, check bool) {
 	for j := 0; j < values; j++ {
 		sl.Remove(j)
 		if check {
-			t.Log("deleted ", j)
 			checkList(t, sl)
 		}
 	}
