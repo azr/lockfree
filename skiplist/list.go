@@ -1,3 +1,13 @@
+//Package skiplist is an implementation of a scalable & concurrent skip list
+//
+//* Searches are lock free.
+//
+//* Inserts/Deletes will lock locally.
+//
+//Internally uses unsafe pointers to do atomic operations. Every operation on the list is thread safe unless said otherwise.
+//The race detector will scream about unprotected bool R/W though.
+//
+//math.MinInt32 // math.MaxInt32 are used as our boundaries values
 package skiplist
 
 import (
@@ -7,14 +17,14 @@ import (
 	"unsafe"
 )
 
-//Header of a skip list
+//Header of a skip list, yours to play with.
 type Header struct {
 	length                      uint32
-	leftSentinel, rightSentinel *Node
+	leftSentinel, rightSentinel *node
 }
 
-//Node of a skip list
-type Node struct {
+//node of a skip list
+type node struct {
 	key         int
 	value       unsafe.Pointer //user stuff
 	nexts       nodeSlice      // slice of *Node
@@ -31,16 +41,16 @@ func newFullNodeSlice() nodeSlice {
 	// var slice [maxlevel]*Node
 	return slice[:]
 }
-func (ns nodeSlice) get(layer int) *Node {
-	return (*Node)(atomic.LoadPointer(&ns[layer]))
+func (ns nodeSlice) get(layer int) *node {
+	return (*node)(atomic.LoadPointer(&ns[layer]))
 	// return ns[layer]
 }
-func (ns nodeSlice) set(layer int, n *Node) {
+func (ns nodeSlice) set(layer int, n *node) {
 	atomic.StorePointer(&ns[layer], unsafe.Pointer(n))
 	// ns[layer] = n
 }
 func (ns nodeSlice) unlock(highest int) {
-	var prev *Node
+	var prev *node
 	for i := highest; i >= 0; i-- {
 		curr := ns.get(i)
 		if curr != prev {
@@ -57,11 +67,12 @@ func New() *Header {
 	return h
 }
 
-// Initialize resets the list to a default empty state
+// Initialize resets the list to a default empty state,
+// not thread safely.
 func (h *Header) Initialize() {
 	left := newFullNodeSlice()
 	right := newFullNodeSlice()
-	rightMost := &Node{
+	rightMost := &node{
 		key:         int(math.MaxInt32),
 		nexts:       right[:],
 		fullyLinked: true,
@@ -69,7 +80,7 @@ func (h *Header) Initialize() {
 	for i := range left {
 		left.set(i, rightMost)
 	}
-	leftMost := &Node{
+	leftMost := &node{
 		key:         int(math.MinInt32),
 		nexts:       left[:],
 		fullyLinked: true,
@@ -78,10 +89,10 @@ func (h *Header) Initialize() {
 	h.leftSentinel, h.rightSentinel = leftMost, rightMost
 }
 
-func (n *Node) contains(v int) bool {
+func (n *node) contains(v int) bool {
 	return n.key == v
 }
-func (n *Node) lowerThan(v int) bool {
+func (n *node) lowerThan(v int) bool {
 	return n.key < v
 }
 
@@ -123,8 +134,10 @@ func (h *Header) findNode(v int, preds, succs nodeSlice) (lFound int) {
 	return
 }
 
-//Set adds ptr into list at v
+//Set adds ptr into list at v.
+//
 //returns false if it was just an edit
+//
 //returns true if it was added
 func (h *Header) Set(v int, ptr unsafe.Pointer) bool {
 	topLayer := generateLevel(maxlevel)
@@ -147,7 +160,7 @@ func (h *Header) Set(v int, ptr unsafe.Pointer) bool {
 		}
 		highestLocked := -1
 
-		var prevPred, pred, succ *Node
+		var prevPred, pred, succ *node
 		valid := true
 		for layer := 0; valid && layer <= topLayer; layer++ {
 			pred = preds.get(layer)
@@ -176,9 +189,10 @@ func (h *Header) Set(v int, ptr unsafe.Pointer) bool {
 }
 
 //Remove node containing v if any
-//return false if a remove is already in progress on that node
+//
+//return false if a Remove is already in progress for that node
 func (h *Header) Remove(v int) bool {
-	var nodeToDelete *Node
+	var nodeToDelete *node
 	isMarked := false
 	topLayer := -1
 	preds, succs := newFullNodeSlice(), newFullNodeSlice()
@@ -200,7 +214,7 @@ func (h *Header) Remove(v int) bool {
 		}
 		highestLocked := -1
 
-		var prevPred, pred, succ *Node
+		var prevPred, pred, succ *node
 		valid := true
 		for layer := 0; valid && (layer <= topLayer); layer++ {
 			pred = preds.get(layer)
@@ -226,11 +240,11 @@ func (h *Header) Remove(v int) bool {
 	}
 }
 
-func (n *Node) okToDelete(lFound int) bool {
+func (n *node) okToDelete(lFound int) bool {
 	return (n.fullyLinked) && len(n.nexts) == lFound+1 && !n.marked
 }
 
-//Contains returns true if v was found in list
+//Contains returns true if v can be found in list
 func (h *Header) Contains(v int) bool {
 	preds, succs := newFullNodeSlice(), newFullNodeSlice()
 	lFound := h.findNode(v, preds, succs)
@@ -254,8 +268,8 @@ func (h *Header) Get(v int) (ptr unsafe.Pointer, found bool) {
 
 //newNode instanciates a *Node with topLayer set right
 // and a slice of `topLayer` sized nexts
-func newNode(ptr unsafe.Pointer, v, topLayer int) *Node {
-	n := &Node{
+func newNode(ptr unsafe.Pointer, v, topLayer int) *node {
+	n := &node{
 		value: ptr,
 		key:   v,
 		nexts: make([]unsafe.Pointer, topLayer+1),
