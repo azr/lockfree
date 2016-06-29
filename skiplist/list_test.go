@@ -59,6 +59,20 @@ func TestList(t *testing.T) {
 	}
 }
 
+func TestAlot(t *testing.T) {
+	sl := New()
+	in := 10000
+	insert(t, sl, in, true)
+	if sl.Len() != in {
+		t.Fatal("inserted ", in, " items and size is: ", sl.Len())
+	}
+	remove(t, sl, in, true)
+	if sl.Len() != 0 {
+		t.Fatal("removed ", in, " items and size is: ", sl.Len())
+	}
+
+}
+
 func TestParallel(t *testing.T) {
 	// return
 	c := make(chan bool)
@@ -67,21 +81,11 @@ func TestParallel(t *testing.T) {
 	sl := New()
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	insert := func() {
-		for j := 0; j < values; j++ {
-			sl.Add(j)
-		}
-	}
-	delete := func() {
-		for j := 0; j < values; j++ {
-			sl.Remove(j)
-		}
-	}
 	go func() {
 		defer wg.Done()
 		<-c
 		for i := 0; i <= times; i++ {
-			insert()
+			insert(t, sl, values, false)
 		}
 	}()
 
@@ -89,7 +93,7 @@ func TestParallel(t *testing.T) {
 		defer wg.Done()
 		<-c
 		for i := 0; i < times; i++ {
-			delete()
+			remove(t, sl, values, false)
 		}
 	}()
 	time.Sleep(time.Nanosecond * 10)
@@ -97,4 +101,38 @@ func TestParallel(t *testing.T) {
 	wg.Wait()
 	println("poulet: ", sl.Len())
 	println("rotis !")
+}
+
+func insert(t *testing.T, sl *Header, values int, check bool) {
+	for j := 0; j < values; j++ {
+		sl.Add(j)
+		if check {
+			t.Log("inserted: ", j)
+			checkList(t, sl)
+		}
+	}
+}
+
+func remove(t *testing.T, sl *Header, values int, check bool) {
+	for j := 0; j < values; j++ {
+		sl.Remove(j)
+		if check {
+			t.Log("deleted ", j)
+			checkList(t, sl)
+		}
+	}
+}
+
+func checkList(t *testing.T, sl *Header) {
+	//check that everything is in a valid state
+	for i := range sl.leftSentinel.nexts {
+		n := sl.leftSentinel.nexts.get(i)
+		if n == nil {
+			t.Fatalf("leftSentinel.next[%d] is nil ?", i)
+		}
+	}
+	for curr := sl.leftSentinel; curr != nil; curr = curr.nexts.get(0) {
+		curr.lock.Lock()
+		curr.lock.Unlock()
+	}
 }
