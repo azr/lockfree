@@ -158,6 +158,7 @@ func (h *Header) Add(v int) bool {
 			valid = !pred.marked && !succ.marked && pred.nexts.get(layer) == succ
 		}
 		if !valid {
+			preds.unlock(highestLocked)
 			continue
 		}
 		newNode := newNode(v, topLayer)
@@ -210,6 +211,7 @@ func (h *Header) Remove(v int) bool {
 			valid = !pred.marked && pred.nexts.get(layer) == succ
 		}
 		if !valid {
+			preds.unlock(highestLocked)
 			continue
 		}
 		for layer := topLayer; layer >= 0; layer-- {

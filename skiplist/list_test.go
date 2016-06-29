@@ -77,7 +77,7 @@ func TestAlot(t *testing.T) {
 
 func TestParallel(t *testing.T) {
 	c := make(chan bool)
-	times := 10
+	times := 100
 	values := 5
 	sl := New()
 	wg := sync.WaitGroup{}
