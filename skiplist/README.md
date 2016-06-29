@@ -1,3 +1,5 @@
+# A fast SkipList ! [![GoDoc](https://godoc.org/github.com/azr/lockfree/skiplist?status.png)](https://godoc.org/github.com/azr/lockfree/skiplist) [![Build Status](https://travis-ci.org/azr/lockfree.png)](https://travis-ci.org/azr/lockfree)
+
 Implementation of [A Provably Correct Scalable Concurrent Skip
 List](https://www.cs.tau.ac.il/~shanir/nir-pubs-web/Papers/OPODIS2006-BA.pdf)
 
