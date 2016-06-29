@@ -4,7 +4,7 @@ import (
 	"math"
 	"sync"
 	"sync/atomic"
-	// "unsafe"
+	"unsafe"
 )
 
 //Header of a skip list
@@ -22,21 +22,21 @@ type Node struct {
 	lock        sync.Mutex
 }
 
-// type nodeSlice []unsafe.Pointer // atomic slice of *Node
-type nodeSlice []*Node
+type nodeSlice []unsafe.Pointer // atomic slice of *Node
+// type nodeSlice []*Node
 
 func newFullNodeSlice() nodeSlice {
-	// var slice [maxlevel]unsafe.Pointer
-	var slice [maxlevel]*Node
+	var slice [maxlevel]unsafe.Pointer
+	// var slice [maxlevel]*Node
 	return slice[:]
 }
 func (ns nodeSlice) get(layer int) *Node {
-	// return (*Node)(atomic.LoadPointer(&ns[layer]))
-	return ns[layer]
+	return (*Node)(atomic.LoadPointer(&ns[layer]))
+	// return ns[layer]
 }
 func (ns nodeSlice) set(layer int, n *Node) {
-	// atomic.StorePointer(&ns[layer], unsafe.Pointer(n))
-	ns[layer] = n
+	atomic.StorePointer(&ns[layer], unsafe.Pointer(n))
+	// ns[layer] = n
 }
 func (ns nodeSlice) unlock(highest int) {
 	var prev *Node
@@ -238,7 +238,8 @@ func (h *Header) Contains(v int) bool {
 func newNode(v, topLayer int) *Node {
 	n := &Node{
 		key:   v,
-		nexts: make([]*Node, topLayer+1),
+		nexts: make([]unsafe.Pointer, topLayer+1),
+		// nexts: make([]*Node, topLayer+1),
 	}
 	// n.lock.Lock()
 	return n
