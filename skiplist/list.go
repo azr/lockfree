@@ -27,18 +27,18 @@ type Header struct {
 type node struct {
 	key         int
 	value       unsafe.Pointer //user stuff
-	nexts       nodeSlice      // slice of *Node
+	nexts       nodeSlice      // slice of *node
 	marked      bool
 	fullyLinked bool
 	lock        sync.Mutex
 }
 
-type nodeSlice []unsafe.Pointer // atomic slice of *Node
-// type nodeSlice []*Node
+type nodeSlice []unsafe.Pointer // atomic slice of *node
+// type nodeSlice []*node
 
 func newFullNodeSlice() nodeSlice {
 	var slice [maxlevel]unsafe.Pointer
-	// var slice [maxlevel]*Node
+	// var slice [maxlevel]*node
 	return slice[:]
 }
 func (ns nodeSlice) get(layer int) *node {
@@ -266,14 +266,14 @@ func (h *Header) Get(v int) (ptr unsafe.Pointer, found bool) {
 	return atomic.LoadPointer(&n.value), true
 }
 
-//newNode instanciates a *Node with topLayer set right
+//newNode instanciates a *node with topLayer set right
 // and a slice of `topLayer` sized nexts
 func newNode(ptr unsafe.Pointer, v, topLayer int) *node {
 	n := &node{
 		value: ptr,
 		key:   v,
 		nexts: make([]unsafe.Pointer, topLayer+1),
-		// nexts: make([]*Node, topLayer+1),
+		// nexts: make([]*node, topLayer+1),
 	}
 	// n.lock.Lock()
 	return n
